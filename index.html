@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Photo Uploader</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 10px; }
+    select, button { margin: 10px; padding: 10px; font-size: 16px; }
+    video, canvas { max-width: 100%; margin: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Upload Student Photo</h2>
+
+  <label>Choose Sheet:</label><br>
+  <select id="sheetSelect" onchange="loadStudents()"></select><br>
+
+  <label>Select Roll No:</label><br>
+  <select id="rollSelect" onchange="updateStudentInfo()"></select><br>
+
+  <div id="studentInfo"></div>
+
+  <video id="video" autoplay playsinline width="300" height="390"></video>
+  <canvas id="canvas" style="display:none;"></canvas><br>
+  <button onclick="captureAndUpload()">Capture & Upload</button>
+
+  <script>
+    const scriptURL = 'YOUR_DEPLOYED_SCRIPT_URL';
+
+    const sheetSelect = document.getElementById('sheetSelect');
+    const rollSelect = document.getElementById('rollSelect');
+    const studentInfo = document.getElementById('studentInfo');
+    let currentStudentCode = '';
+
+    fetch(scriptURL).then(res => res.json()).then(data => {
+      data.forEach(name => {
+        const option = document.createElement('option');
+        option.textContent = name;
+        sheetSelect.appendChild(option);
+      });
+      loadStudents(); // load first sheet by default
+    });
+
+    function loadStudents() {
+      rollSelect.innerHTML = '';
+      studentInfo.innerHTML = '';
+      currentStudentCode = '';
+      fetch(scriptURL, {
+        method: 'POST',
+        body: new URLSearchParams({
+          action: 'getStudents',
+          sheetName: sheetSelect.value
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        data.forEach((student, index) => {
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = student.roll;
+          rollSelect.appendChild(option);
+        });
+        updateStudentInfo(); // load first student info
+      });
+    }
+
+    let studentList = [];
+    function updateStudentInfo() {
+      fetch(scriptURL, {
+        method: 'POST',
+        body: new URLSearchParams({
+          action: 'getStudents',
+          sheetName: sheetSelect.value
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        studentList = data;
+        const selected = studentList[rollSelect.value];
+        currentStudentCode = selected.code;
+        studentInfo.innerHTML = `<b>Student Name:</b> ${selected.name}<br><b>Student Code:</b> ${selected.code}`;
+      });
+    }
+
+    // Camera
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+      video.srcObject = stream;
+    });
+
+    function captureAndUpload() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const targetRatio = 5 / 6.5;
+
+      let cropWidth = vw;
+      let cropHeight = cropWidth / targetRatio;
+      if (cropHeight > vh) {
+        cropHeight = vh;
+        cropWidth = cropHeight * targetRatio;
+      }
+
+      const x = (vw - cropWidth) / 2;
+      const y = (vh - cropHeight) / 2;
+
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
+      ctx.drawImage(video, x, y, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+      canvas.toBlob(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result.split(',')[1];
+          fetch(scriptURL, {
+            method: 'POST',
+            body: new URLSearchParams({
+              action: 'uploadImage',
+              code: currentStudentCode,
+              image: base64data,
+              mimeType: blob.type
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'success') {
+              alert('Uploaded: ' + data.url);
+            } else {
+              alert('Error: ' + data.message);
+            }
+          });
+        };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.9);
+    }
+  </script>
+</body>
+</html>
