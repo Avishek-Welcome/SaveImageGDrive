@@ -3,154 +3,120 @@
   <head>
     <base target="_top">
     <style>
-      body { font-family: Arial, sans-serif; padding: 20px; }
-      select, button { font-size: 16px; margin: 5px 0; }
-      #preview { margin-top: 10px; }
+      video, canvas {
+        width: 500px;
+        height: 650px;
+        border: 1px solid black;
+      }
     </style>
   </head>
   <body>
-    <h2>Student Photo Upload</h2>
-    
-    <!-- Sheet selection -->
-    <div>
-      <label for="sheetSelect">Select Sheet:</label>
-      <select id="sheetSelect"></select>
-    </div>
-    
-    <!-- Roll Number selection -->
-    <div>
-      <label for="rollSelect">Select Roll No:</label>
-      <select id="rollSelect"></select>
-    </div>
-    
-    <!-- Display student details -->
-    <div id="studentDetails">
-      <p><strong>Student Code:</strong> <span id="studentCode"></span></p>
-      <p><strong>Student Name:</strong> <span id="studentName"></span></p>
-    </div>
-    
-    <!-- Image capture -->
-    <div>
-      <label for="photoInput">Take Photo (using mobile camera):</label><br>
-      <input type="file" id="photoInput" accept="image/*" capture="camera">
-    </div>
-    
-    <!-- Canvas for image processing (hidden) -->
-    <canvas id="canvas" width="500" height="650" style="display:none;"></canvas>
-    
-    <!-- Upload Button -->
-    <div>
-      <button id="uploadBtn">Upload Photo</button>
-    </div>
-    
-    <div id="status"></div>
-    
+    <h1>Student Photo Upload</h1>
+    <label for="sheetSelect">Select Sheet:</label>
+    <select id="sheetSelect"></select>
+    <br><br>
+    <label for="rollSelect">Select Roll No:</label>
+    <select id="rollSelect"></select>
+    <br><br>
+    <p id="studentName"></p>
+    <video id="video" autoplay></video>
+    <br>
+    <button id="capture">Capture</button>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <br>
+    <button id="upload">Upload</button>
+    <p id="status"></p>
+
     <script>
-      // On page load, retrieve sheet names
-      document.addEventListener("DOMContentLoaded", function() {
-        google.script.run.withSuccessHandler(populateSheetSelect)
-            .getSheetNames();
+      let studentCode = '';
+
+      function populateSheets() {
+        google.script.run.withSuccessHandler(function(sheets) {
+          const sheetSelect = document.getElementById('sheetSelect');
+          sheets.forEach(sheet => {
+            const option = document.createElement('option');
+            option.value = sheet;
+            option.text = sheet;
+            sheetSelect.add(option);
+          });
+        }).getSheetNames();
+      }
+
+      function populateRollNumbers(sheetName) {
+        google.script.run.withSuccessHandler(function(rolls) {
+          const rollSelect = document.getElementById('rollSelect');
+          rollSelect.innerHTML = '';
+          rolls.forEach(roll => {
+            const option = document.createElement('option');
+            option.value = roll;
+            option.text = roll;
+            rollSelect.add(option);
+          });
+        }).getRollNumbers(sheetName);
+      }
+
+      function fetchStudentInfo(sheetName, rollNo) {
+        google.script.run.withSuccessHandler(function(info) {
+          document.getElementById('studentName').innerText = `Student Name: ${info.name}`;
+          studentCode = info.code;
+        }).getStudentInfo(sheetName, rollNo);
+      }
+
+      document.getElementById('sheetSelect').addEventListener('change', function() {
+        const sheetName = this.value;
+        populateRollNumbers(sheetName);
       });
-      
-      // Populate the sheet selection dropdown.
-      function populateSheetSelect(sheetNames) {
-        const sheetSelect = document.getElementById("sheetSelect");
-        sheetSelect.innerHTML = "";
-        sheetNames.forEach(name => {
-          const opt = document.createElement("option");
-          opt.value = name;
-          opt.textContent = name;
-          sheetSelect.appendChild(opt);
+
+      document.getElementById('rollSelect').addEventListener('change', function() {
+        const sheetName = document.getElementById('sheetSelect').value;
+        const rollNo = this.value;
+        fetchStudentInfo(sheetName, rollNo);
+      });
+
+      // Access the device camera and stream to video element
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          document.getElementById('video').srcObject = stream;
+        })
+        .catch(err => {
+          console.error("Error accessing camera: ", err);
         });
-        // Load roll numbers for the first sheet by default.
-        loadRollNumbers(sheetSelect.value);
-      }
-      
-      // When a sheet is selected, load its roll numbers.
-      document.getElementById("sheetSelect").addEventListener("change", function() {
-        loadRollNumbers(this.value);
+
+      // Capture the image from the video stream
+      document.getElementById('capture').addEventListener('click', () => {
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        context.drawImage(document.getElementById('video'), 0, 0, canvas.width, canvas.height);
+        canvas.style.display = 'block';
       });
-      
-      function loadRollNumbers(sheetName) {
-        google.script.run.withSuccessHandler(populateRollSelect)
-          .getRollNumbers(sheetName);
-      }
-      
-      // Populate roll number select box.
-      function populateRollSelect(rollNumbers) {
-        const rollSelect = document.getElementById("rollSelect");
-        rollSelect.innerHTML = "";
-        rollNumbers.forEach(r => {
-          const opt = document.createElement("option");
-          opt.value = r;
-          opt.textContent = r;
-          rollSelect.appendChild(opt);
-        });
-        // Load student details for the first roll number.
-        if(rollNumbers.length > 0) loadStudentDetails(document.getElementById("sheetSelect").value, rollNumbers[0]);
-      }
-      
-      // When a roll number is selected, get student details.
-      document.getElementById("rollSelect").addEventListener("change", function() {
-        const sheetName = document.getElementById("sheetSelect").value;
-        loadStudentDetails(sheetName, this.value);
-      });
-      
-      function loadStudentDetails(sheetName, rollNo) {
-        google.script.run.withSuccessHandler(function(details) {
-          if (details) {
-            document.getElementById("studentCode").textContent = details.studentCode;
-            document.getElementById("studentName").textContent = details.studentName;
-          } else {
-            document.getElementById("studentCode").textContent = "";
-            document.getElementById("studentName").textContent = "Not found.";
-          }
-        }).getStudentDetails(sheetName, rollNo);
-      }
-      
-      // Handle image upload.
-      document.getElementById("uploadBtn").addEventListener("click", function() {
-        const fileInput = document.getElementById("photoInput");
-        if (fileInput.files.length === 0) {
-          document.getElementById("status").textContent = "Please capture a photo first.";
+
+      // Upload the captured image to Google Drive
+      document.getElementById('upload').addEventListener('click', () => {
+        if (!studentCode) {
+          alert('Please select a student.');
           return;
         }
-        
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          // Create an image element to load the captured photo.
-          const img = new Image();
-          img.onload = function() {
-            // Draw the image onto the canvas at fixed 500x650 (5:6.5 ratio).
-            const canvas = document.getElementById("canvas");
-            const ctx = canvas.getContext("2d");
-            // Clear canvas and draw image resized to 500x650.
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, 500, 650);
-            // Convert the canvas to a JPEG Data URL.
-            const dataUrl = canvas.toDataURL("image/jpeg");
-            // Remove the data URL prefix.
-            const base64Data = dataUrl.replace(/^data:image\/jpeg;base64,/, "");
-            
-            // Get student code (used as filename)
-            const studentCode = document.getElementById("studentCode").textContent;
-            if (!studentCode) {
-              document.getElementById("status").textContent = "Student Code is missing.";
-              return;
-            }
-            
-            // Call the server-side function to save the image.
-            google.script.run.withSuccessHandler(function(url) {
-              document.getElementById("status").innerHTML = "Image saved successfully! <br><a href='" + url + "' target='_blank'>View Image</a>";
-              // Optionally, clear the file input.
-              fileInput.value = "";
-            }).saveStudentImage(studentCode, base64Data);
-          };
-          img.src = e.target.result;
+
+        const canvas = document.getElementById('canvas');
+        const imageData = canvas.toDataURL('image/jpeg');
+        const payload = {
+          imageData,
+          studentCode
         };
-        reader.readAsDataURL(file);
+
+        google.script.run.withSuccessHandler(function(response) {
+          if (response.status === 'success') {
+            document.getElementById('status').innerText = 'Image uploaded successfully!';
+          } else {
+            document.getElementById('status').innerText = 'Upload failed: ' + response.message;
+          }
+        }).uploadImage(payload);
       });
+
+      // Initialize the sheet selection on page load
+      window.onload = function() {
+        populateSheets();
+      };
     </script>
   </body>
 </html>
