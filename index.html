@@ -3,72 +3,83 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MHS Student Image Uploader</title>
+  <title>📸 MHS Student Image Uploader</title>
   <style>
     body {
+      background-color: #fff8e1;
+      color: #b71c1c;
       font-family: Arial, sans-serif;
-      background: #fffbe6;
-      color: #222;
-      padding: 2em;
+      padding: 1em;
     }
     h2 {
       background: #b71c1c;
-      color: #fff;
-      padding: 0.6em;
-      border-radius: 8px;
+      color: #ffeb3b;
+      padding: 0.5em;
+      text-align: center;
+      border-radius: 12px;
+    }
+    label, select, button {
+      margin-top: 1em;
+      font-size: 1.1em;
+      display: block;
     }
     select, button {
       width: 100%;
       padding: 0.5em;
-      margin-top: 0.5em;
-      border-radius: 5px;
-      font-size: 1em;
+      border-radius: 8px;
+      border: 2px solid #b71c1c;
     }
     button {
-      background: #b71c1c;
-      color: #fff;
+      background-color: #b71c1c;
+      color: #ffeb3b;
       font-weight: bold;
+      cursor: pointer;
     }
     .student-info {
-      background: #f9f1c7;
       margin-top: 1em;
+      background-color: #ffeb3b;
+      color: #b71c1c;
       padding: 1em;
-      border-radius: 8px;
+      border-radius: 12px;
+      font-weight: bold;
     }
-    #imagePreview {
+    video, canvas, img {
       margin-top: 1em;
-      width: 300px;
-      height: 390px;
-      object-fit: cover;
-      border: 2px solid #b71c1c;
-      border-radius: 10px;
-    }
-    #swapBtn {
-      width: 48%;
-      float: left;
-      margin-right: 4%;
-    }
-    #captureBtn {
-      width: 48%;
-    }
-    video {
       width: 100%;
-      margin-top: 1em;
-      border-radius: 10px;
-    }
-    canvas {
-      display: none;
+      max-width: 300px;
+      border: 2px solid #b71c1c;
+      border-radius: 12px;
     }
     #status {
       margin-top: 1em;
       font-weight: bold;
+    }
+    #flash {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: white;
+      display: none;
+      z-index: 100;
+    }
+    #previewText {
+      font-weight: bold;
+      margin-top: 0.5em;
+    }
+    .small-btn {
+      width: auto;
+      font-size: 0.9em;
+      padding: 0.4em 1em;
+      display: inline-block;
     }
   </style>
 </head>
 <body>
   <h2>📸 Student Image Uploader</h2>
 
+  <label for="sheetSelect">📄 Select Sheet:</label>
   <select id="sheetSelect"></select>
+
+  <label for="rollSelect">🔢 Select Roll No:</label>
   <select id="rollSelect"></select>
 
   <div class="student-info">
@@ -76,32 +87,36 @@
     <div id="studentCode">🆔 Code: </div>
   </div>
 
-  <img id="imagePreview" src="" alt="No Preview"/>
+  <div id="previewText">📷 Preview:</div>
+  <img id="imagePreview" src="" alt="No Preview" onerror="this.src=''" />
 
-  <video id="video" autoplay playsinline></video><br/>
-  <button id="swapBtn" onclick="swapCamera()">🔄 Swap</button>
-  <button id="captureBtn" onclick="captureImage()">📷 Capture</button>
+  <button class="small-btn" onclick="swapCamera()">🔄 Swap Camera</button>
+  <video id="video" autoplay playsinline></video>
 
-  <canvas id="canvasPreview" width="300" height="390"></canvas>
-  <button onclick="uploadImage()">⬆️ Upload</button>
+  <button onclick="captureImage()">📸 Capture Image</button>
+  <canvas id="canvasPreview" width="300" height="390" style="display:none;"></canvas>
+  <button onclick="uploadImage()">⬆️ Upload Image</button>
 
   <div id="status"></div>
+  <div id="flash"></div>
 
   <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
 
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyx0_dK-vYFoIq_ebDamVSTj0fEUt2ySx8ItJ0gIyoxN86WmSGxAV3pwqt-YZvEuGVO/exec';
-    let students = [], currentStream, useFrontCamera = true;
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbxCbajem-oMdwS8wKjtP8s5hJbzFfyPUl4iCUpBajrj21AcQWsikC5kH6NKBvjzGDIc/exec'; // Replace with your Web App URL
+    let students = [];
+    let currentStream;
+    let useFrontCamera = true;
 
     async function loadSheets() {
       const res = await fetch(scriptUrl);
-      const sheets = await res.json();
+      const sheetNames = await res.json();
       const select = document.getElementById('sheetSelect');
       select.innerHTML = '<option value="">--Select Sheet--</option>';
-      sheets.forEach(s => {
+      sheetNames.forEach(name => {
         const opt = document.createElement('option');
-        opt.value = s;
-        opt.textContent = s;
+        opt.value = name;
+        opt.textContent = name;
         select.appendChild(opt);
       });
     }
@@ -122,55 +137,44 @@
       });
     }
 
-    async function updateStudentInfo(roll) {
+    function updateStudentInfo(roll) {
       const student = students.find(s => s.roll === roll);
-      document.getElementById('studentName').textContent = student ? `👤 Name: ${student.name}` : '👤 Name:';
-      document.getElementById('studentCode').textContent = student ? `🆔 Code: ${student.code}` : '🆔 Code:';
+      if (!student) return;
 
-      if (student?.code) {
-        const res = await fetch(`${scriptUrl}?action=getImageUrl&code=${student.code}`);
-        const result = await res.json();
-        document.getElementById('imagePreview').src = result.found ? result.url : '';
-        document.getElementById('imagePreview').alt = result.found ? "Student Image" : "No Preview";
-      }
-    }
-
-    async function startCamera() {
-      if (currentStream) currentStream.getTracks().forEach(track => track.stop());
-      currentStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: useFrontCamera ? 'user' : 'environment' }
-      });
-      document.getElementById('video').srcObject = currentStream;
-    }
-
-    function swapCamera() {
-      useFrontCamera = !useFrontCamera;
-      startCamera();
+      document.getElementById('studentName').textContent = `👤 Name: ${student.name}`;
+      document.getElementById('studentCode').textContent = `🆔 Code: ${student.code}`;
+      const img = document.getElementById('imagePreview');
+      img.src = `${scriptUrl}?action=getImageUrl&code=${student.code}&t=${Date.now()}`;
     }
 
     function captureImage() {
       const video = document.getElementById('video');
       const canvas = document.getElementById('canvasPreview');
       const ctx = canvas.getContext('2d');
+      const { videoWidth, videoHeight } = video;
 
-      const ratio = 300 / 390;
-      const vw = video.videoWidth, vh = video.videoHeight;
-      let sx, sy, sw, sh;
+      const targetRatio = 300 / 390;
+      const actualRatio = videoWidth / videoHeight;
 
-      if (vw / vh > ratio) {
-        sh = vh;
-        sw = vh * ratio;
-        sx = (vw - sw) / 2;
+      let sx, sy, sWidth, sHeight;
+      if (actualRatio > targetRatio) {
+        sHeight = videoHeight;
+        sWidth = sHeight * targetRatio;
+        sx = (videoWidth - sWidth) / 2;
         sy = 0;
       } else {
-        sw = vw;
-        sh = vw / ratio;
+        sWidth = videoWidth;
+        sHeight = sWidth / targetRatio;
         sx = 0;
-        sy = (vh - sh) / 2;
+        sy = (videoHeight - sHeight) / 2;
       }
 
-      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 300, 390);
+      ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, 300, 390);
       canvas.style.display = 'block';
+
+      const flash = document.getElementById('flash');
+      flash.style.display = 'block';
+      setTimeout(() => flash.style.display = 'none', 200);
     }
 
     async function uploadImage() {
@@ -182,8 +186,10 @@
         return;
       }
 
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      const base64 = dataUrl.split(',')[1];
+
       document.getElementById('status').textContent = '⏳ Uploading...';
-      const base64 = canvas.toDataURL('image/jpeg').split(',')[1];
 
       const form = new FormData();
       form.append('action', 'uploadImage');
@@ -193,9 +199,33 @@
 
       const res = await fetch(scriptUrl, { method: 'POST', body: form });
       const result = await res.json();
-      document.getElementById('status').textContent = result.status === 'success'
-        ? '✅ Uploaded!' : `❌ Error: ${result.message}`;
-      if (result.status === 'success') document.getElementById('thankYouAudio').play();
+
+      if (result.status === 'success') {
+        document.getElementById('status').textContent = '✅ Uploaded!';
+        document.getElementById('thankYouAudio').play();
+        document.getElementById('imagePreview').src = `${scriptUrl}?action=getImageUrl&code=${student.code}&t=${Date.now()}`;
+        setTimeout(() => window.close(), 3000);
+      } else {
+        document.getElementById('status').textContent = '❌ Upload failed: ' + result.message;
+      }
+    }
+
+    async function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? 'user' : 'environment'
+        }
+      };
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      document.getElementById('video').srcObject = currentStream;
+    }
+
+    function swapCamera() {
+      useFrontCamera = !useFrontCamera;
+      startCamera();
     }
 
     document.getElementById('sheetSelect').addEventListener('change', e => loadRolls(e.target.value));
