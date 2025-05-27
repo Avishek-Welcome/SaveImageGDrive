@@ -33,23 +33,12 @@
       font-weight: bold;
       cursor: pointer;
     }
-    .video-container {
-      position: relative;
-      width: 300px;
-      height: 390px;
-      overflow: hidden;
+    video {
       margin-top: 1em;
       border: 2px solid #b71c1c;
       border-radius: 10px;
-    }
-    video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      transform: scaleX(-1);
-    }
-    canvas {
-      display: none;
+      width: 100%;
+      max-width: 300px;
     }
     .student-info {
       margin-top: 1em;
@@ -57,6 +46,12 @@
       background: #ffeb3b;
       color: #b71c1c;
       font-weight: bold;
+      border-radius: 10px;
+    }
+    #canvasPreview {
+      margin-top: 1em;
+      display: none;
+      border: 2px solid #b71c1c;
       border-radius: 10px;
     }
     #status {
@@ -79,19 +74,20 @@
     <div id="studentCode">🆔 Code: </div>
   </div>
 
-  <div class="video-container">
-    <video id="video" autoplay playsinline></video>
-  </div>
+  <video id="video" autoplay playsinline></video><br>
   <button onclick="captureImage()">📷 Capture Image</button>
-  <canvas id="canvas" width="300" height="390"></canvas>
+  <canvas id="canvasPreview" width="300" height="390"></canvas>
   <button onclick="uploadImage()">⬆️ Upload Image</button>
+  <button onclick="swapCamera()">🔄 Swap Camera</button>
 
   <div id="status"></div>
 
+  <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
+
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzDHPmoxRsdXnutU4pSP9FWUOdl5-EC9FZVrUGflNMRjwT42S-z_5Vj4QyL5sjbkxQY/exec';
     let students = [];
-    let currentStream = null;
+    let currentStream;
     let useFrontCamera = true;
 
     async function loadSheets() {
@@ -129,43 +125,34 @@
       document.getElementById('studentCode').textContent = student ? `🆔 Code: ${student.code}` : '🆔 Code:';
     }
 
-    async function startCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
-
-      const constraints = {
-        video: {
-          facingMode: useFrontCamera ? 'user' : 'environment',
-          width: { ideal: 720 },
-          height: { ideal: 936 } // 5:6.5 ratio
-        }
-      };
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        currentStream = stream;
-        const video = document.getElementById('video');
-        video.srcObject = stream;
-        video.onloadedmetadata = () => {
-          const ratio = 6.5 / 5;
-          video.style.height = video.videoWidth * ratio + 'px';
-        };
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-      }
-    }
-
     function captureImage() {
-      const canvas = document.getElementById('canvas');
-      const context = canvas.getContext('2d');
       const video = document.getElementById('video');
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const canvas = document.getElementById('canvasPreview');
+      const ctx = canvas.getContext('2d');
+      const { videoWidth, videoHeight } = video;
+
+      const targetRatio = 300 / 390;
+      const actualRatio = videoWidth / videoHeight;
+
+      let sx, sy, sWidth, sHeight;
+      if (actualRatio > targetRatio) {
+        sHeight = videoHeight;
+        sWidth = sHeight * targetRatio;
+        sx = (videoWidth - sWidth) / 2;
+        sy = 0;
+      } else {
+        sWidth = videoWidth;
+        sHeight = sWidth / targetRatio;
+        sx = 0;
+        sy = (videoHeight - sHeight) / 2;
+      }
+
+      ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, 300, 390);
       canvas.style.display = 'block';
     }
 
     async function uploadImage() {
-      const canvas = document.getElementById('canvas');
+      const canvas = document.getElementById('canvasPreview');
       const roll = document.getElementById('rollSelect').value;
       const student = students.find(s => s.roll === roll);
       if (!student || !canvas.toDataURL) {
@@ -186,14 +173,32 @@
 
       const res = await fetch(scriptUrl, { method: 'POST', body: form });
       const result = await res.json();
+
       if (result.status === 'success') {
         document.getElementById('status').textContent = '✅ Image uploaded successfully!';
-        const audio = new Audio('https://actions.google.com/sounds/v1/human_voices/female_thank_you.ogg');
-        audio.play();
+        document.getElementById('thankYouAudio').play();
         setTimeout(() => window.close(), 3000);
       } else {
         document.getElementById('status').textContent = '❌ Upload failed: ' + result.message;
       }
+    }
+
+    async function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? 'user' : 'environment'
+        }
+      };
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      document.getElementById('video').srcObject = currentStream;
+    }
+
+    function swapCamera() {
+      useFrontCamera = !useFrontCamera;
+      startCamera();
     }
 
     document.getElementById('sheetSelect').addEventListener('change', e => loadRolls(e.target.value));
