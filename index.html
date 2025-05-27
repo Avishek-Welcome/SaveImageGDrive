@@ -33,12 +33,23 @@
       font-weight: bold;
       cursor: pointer;
     }
-    video, canvas {
+    .video-container {
+      position: relative;
+      width: 300px;
+      height: 390px;
+      overflow: hidden;
       margin-top: 1em;
       border: 2px solid #b71c1c;
       border-radius: 10px;
-      width: 300px;
-      height: 390px; /* 5:6.5 ratio */
+    }
+    video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: scaleX(-1);
+    }
+    canvas {
+      display: none;
     }
     .student-info {
       margin-top: 1em;
@@ -68,20 +79,19 @@
     <div id="studentCode">🆔 Code: </div>
   </div>
 
-  <video id="video" autoplay playsinline></video><br>
+  <div class="video-container">
+    <video id="video" autoplay playsinline></video>
+  </div>
   <button onclick="captureImage()">📷 Capture Image</button>
-  <canvas id="canvas" width="300" height="390" style="display:none;"></canvas>
+  <canvas id="canvas" width="300" height="390"></canvas>
   <button onclick="uploadImage()">⬆️ Upload Image</button>
-  <button onclick="swapCamera()">🔄 Swap Camera</button>
 
   <div id="status"></div>
 
-  <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
-
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzDHPmoxRsdXnutU4pSP9FWUOdl5-EC9FZVrUGflNMRjwT42S-z_5Vj4QyL5sjbkxQY/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
     let students = [];
-    let currentStream;
+    let currentStream = null;
     let useFrontCamera = true;
 
     async function loadSheets() {
@@ -119,6 +129,33 @@
       document.getElementById('studentCode').textContent = student ? `🆔 Code: ${student.code}` : '🆔 Code:';
     }
 
+    async function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? 'user' : 'environment',
+          width: { ideal: 720 },
+          height: { ideal: 936 } // 5:6.5 ratio
+        }
+      };
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        currentStream = stream;
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          const ratio = 6.5 / 5;
+          video.style.height = video.videoWidth * ratio + 'px';
+        };
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+      }
+    }
+
     function captureImage() {
       const canvas = document.getElementById('canvas');
       const context = canvas.getContext('2d');
@@ -149,34 +186,14 @@
 
       const res = await fetch(scriptUrl, { method: 'POST', body: form });
       const result = await res.json();
-
       if (result.status === 'success') {
         document.getElementById('status').textContent = '✅ Image uploaded successfully!';
-        document.getElementById('thankYouAudio').play();
+        const audio = new Audio('https://actions.google.com/sounds/v1/human_voices/female_thank_you.ogg');
+        audio.play();
         setTimeout(() => window.close(), 3000);
       } else {
         document.getElementById('status').textContent = '❌ Upload failed: ' + result.message;
       }
-    }
-
-    async function startCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
-      const constraints = {
-        video: {
-          facingMode: useFrontCamera ? 'user' : 'environment',
-          width: { ideal: 300 },
-          height: { ideal: 390 }
-        }
-      };
-      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-      document.getElementById('video').srcObject = currentStream;
-    }
-
-    function swapCamera() {
-      useFrontCamera = !useFrontCamera;
-      startCamera();
     }
 
     document.getElementById('sheetSelect').addEventListener('change', e => loadRolls(e.target.value));
