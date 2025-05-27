@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> MHS Student Image Uploader</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MHS Student Image Uploader</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -33,7 +33,7 @@
       font-weight: bold;
       cursor: pointer;
     }
-    video {
+    video, canvas, img {
       margin-top: 1em;
       border: 2px solid #b71c1c;
       border-radius: 10px;
@@ -49,10 +49,7 @@
       border-radius: 10px;
     }
     #canvasPreview {
-      margin-top: 1em;
       display: none;
-      border: 2px solid #b71c1c;
-      border-radius: 10px;
     }
     #status {
       margin-top: 1em;
@@ -74,8 +71,11 @@
     <div id="studentCode">🆔 Code: </div>
   </div>
 
-  <video id="video" autoplay playsinline></video><br>
+  <img id="studentImage" style="display:none;" />
+
+  <video id="video" autoplay playsinline></video>
   <button onclick="captureImage()">📷 Capture Image</button>
+
   <canvas id="canvasPreview" width="300" height="390"></canvas>
   <button onclick="uploadImage()">⬆️ Upload Image</button>
   <button onclick="swapCamera()">🔄 Swap Camera</button>
@@ -85,7 +85,7 @@
   <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
 
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyTLkY9QPCOA9V26IO_pvi-RqremBOj7jBqheiVteml93dGKh5nNHxnNND4zknAvCsl/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbznORBjmmwhEJDrMt8EH_jlJKsdWZBz-0sv94sB7lPS3JD6qhMuf1WHoTHLlOizQTmN/exec';
     let students = [];
     let currentStream;
     let useFrontCamera = true;
@@ -121,8 +121,32 @@
 
     function updateStudentInfo(roll) {
       const student = students.find(s => s.roll === roll);
-      document.getElementById('studentName').textContent = student ? `👤 Name: ${student.name}` : '👤 Name:';
-      document.getElementById('studentCode').textContent = student ? `🆔 Code: ${student.code}` : '🆔 Code:';
+      const name = student ? student.name : '';
+      const code = student ? student.code : '';
+      document.getElementById('studentName').textContent = `👤 Name: ${name}`;
+      document.getElementById('studentCode').textContent = `🆔 Code: ${code}`;
+      if (code) {
+        showStudentImage(code);
+      } else {
+        document.getElementById('studentImage').style.display = 'none';
+      }
+    }
+
+    async function showStudentImage(code) {
+      const form = new FormData();
+      form.append('action', 'getImageIdByCode');
+      form.append('code', code);
+
+      const res = await fetch(scriptUrl, { method: 'POST', body: form });
+      const result = await res.json();
+
+      const img = document.getElementById('studentImage');
+      if (result.status === 'found') {
+        img.src = `https://drive.google.com/uc?export=view&id=${result.fileId}`;
+        img.style.display = 'block';
+      } else {
+        img.style.display = 'none';
+      }
     }
 
     function captureImage() {
