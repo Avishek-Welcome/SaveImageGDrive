@@ -35,9 +35,10 @@
     }
     video, canvas {
       margin-top: 1em;
-      max-width: 100%;
       border: 2px solid #b71c1c;
       border-radius: 10px;
+      width: 300px;
+      height: 390px; /* 5:6.5 ratio */
     }
     .student-info {
       margin-top: 1em;
@@ -67,16 +68,21 @@
     <div id="studentCode">🆔 Code: </div>
   </div>
 
-  <video id="video" autoplay playsinline width="325" height="422"></video>
+  <video id="video" autoplay playsinline></video><br>
   <button onclick="captureImage()">📷 Capture Image</button>
-  <canvas id="canvas" width="325" height="422" style="display:none;"></canvas>
+  <canvas id="canvas" width="300" height="390" style="display:none;"></canvas>
   <button onclick="uploadImage()">⬆️ Upload Image</button>
+  <button onclick="swapCamera()">🔄 Swap Camera</button>
 
   <div id="status"></div>
 
+  <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
+
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzDHPmoxRsdXnutU4pSP9FWUOdl5-EC9FZVrUGflNMRjwT42S-z_5Vj4QyL5sjbkxQY/exec'; // Replace with Apps Script Web App URL
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzDHPmoxRsdXnutU4pSP9FWUOdl5-EC9FZVrUGflNMRjwT42S-z_5Vj4QyL5sjbkxQY/exec';
     let students = [];
+    let currentStream;
+    let useFrontCamera = true;
 
     async function loadSheets() {
       const res = await fetch(scriptUrl);
@@ -130,6 +136,8 @@
         return;
       }
 
+      document.getElementById('status').textContent = '⏳ Uploading...';
+
       const dataUrl = canvas.toDataURL('image/jpeg');
       const base64 = dataUrl.split(',')[1];
 
@@ -141,27 +149,41 @@
 
       const res = await fetch(scriptUrl, { method: 'POST', body: form });
       const result = await res.json();
-      document.getElementById('status').textContent = result.status === 'success' ? '✅ Image uploaded successfully!' : '❌ Upload failed: ' + result.message;
+
+      if (result.status === 'success') {
+        document.getElementById('status').textContent = '✅ Image uploaded successfully!';
+        document.getElementById('thankYouAudio').play();
+        setTimeout(() => window.close(), 3000);
+      } else {
+        document.getElementById('status').textContent = '❌ Upload failed: ' + result.message;
+      }
     }
 
     async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 650 },
-            height: { ideal: 845 }, // 5:6.5 ratio
-            facingMode: 'user'
-          },
-          audio: false
-        });
-        document.getElementById('video').srcObject = stream;
-      } catch (err) {
-        console.error('Camera start error:', err);
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
       }
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? 'user' : 'environment',
+          width: { ideal: 300 },
+          height: { ideal: 390 }
+        }
+      };
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      document.getElementById('video').srcObject = currentStream;
+    }
+
+    function swapCamera() {
+      useFrontCamera = !useFrontCamera;
+      startCamera();
     }
 
     document.getElementById('sheetSelect').addEventListener('change', e => loadRolls(e.target.value));
     document.getElementById('rollSelect').addEventListener('change', e => updateStudentInfo(e.target.value));
 
     loadSheets();
-    startCamera
+    startCamera();
+  </script>
+</body>
+</html>
