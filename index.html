@@ -51,17 +51,6 @@
       margin-top: 1em;
       font-weight: bold;
     }
-    #loading {
-      display: none;
-      margin-top: 1em;
-      color: green;
-    }
-    #swapCamera {
-      margin-top: 1em;
-      background: #ffeb3b;
-      color: #b71c1c;
-      border: 1px solid #b71c1c;
-    }
   </style>
 </head>
 <body>
@@ -78,22 +67,16 @@
     <div id="studentCode">🆔 Code: </div>
   </div>
 
-  <video id="video" autoplay playsinline></video>
-  <button id="swapCamera">🔁 Swap Camera</button>
+  <video id="video" autoplay playsinline width="325" height="422"></video>
   <button onclick="captureImage()">📷 Capture Image</button>
   <canvas id="canvas" width="325" height="422" style="display:none;"></canvas>
   <button onclick="uploadImage()">⬆️ Upload Image</button>
 
-  <div id="loading">⏳ Uploading...</div>
   <div id="status"></div>
 
-  <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/human_voices/female_thank_you.ogg"></audio>
-
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzDHPmoxRsdXnutU4pSP9FWUOdl5-EC9FZVrUGflNMRjwT42S-z_5Vj4QyL5sjbkxQY/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzDHPmoxRsdXnutU4pSP9FWUOdl5-EC9FZVrUGflNMRjwT42S-z_5Vj4QyL5sjbkxQY/exec'; // Replace with Apps Script Web App URL
     let students = [];
-    let currentStream;
-    let useFrontCamera = true;
 
     async function loadSheets() {
       const res = await fetch(scriptUrl);
@@ -147,7 +130,6 @@
         return;
       }
 
-      document.getElementById('loading').style.display = 'block';
       const dataUrl = canvas.toDataURL('image/jpeg');
       const base64 = dataUrl.split(',')[1];
 
@@ -159,31 +141,20 @@
 
       const res = await fetch(scriptUrl, { method: 'POST', body: form });
       const result = await res.json();
-      document.getElementById('loading').style.display = 'none';
       document.getElementById('status').textContent = result.status === 'success' ? '✅ Image uploaded successfully!' : '❌ Upload failed: ' + result.message;
-
-      if (result.status === 'success') {
-        document.getElementById('thankYouAudio').play();
-        setTimeout(() => window.close(), 4000);
-      }
     }
 
     async function startCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
-
-      const constraints = {
-        video: {
-          facingMode: useFrontCamera ? 'user' : 'environment',
-          width: { ideal: 325 },
-          height: { ideal: 422 },
-          aspectRatio: 0.769
-        }
-      };
       try {
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        document.getElementById('video').srcObject = currentStream;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 650 },
+            height: { ideal: 845 }, // 5:6.5 ratio
+            facingMode: 'user'
+          },
+          audio: false
+        });
+        document.getElementById('video').srcObject = stream;
       } catch (err) {
         console.error('Camera start error:', err);
       }
@@ -191,13 +162,6 @@
 
     document.getElementById('sheetSelect').addEventListener('change', e => loadRolls(e.target.value));
     document.getElementById('rollSelect').addEventListener('change', e => updateStudentInfo(e.target.value));
-    document.getElementById('swapCamera').addEventListener('click', () => {
-      useFrontCamera = !useFrontCamera;
-      startCamera();
-    });
 
     loadSheets();
-    startCamera();
-  </script>
-</body>
-</html>
+    startCamera
