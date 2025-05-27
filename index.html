@@ -5,84 +5,140 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MHS Student Image Uploader</title>
   <style>
+    :root {
+      --primary: #b71c1c;
+      --accent: #ffeb3b;
+      --background: #fff8e1;
+      --border-radius: 12px;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      background: #fff8e1;
-      color: #b71c1c;
-      padding: 2em;
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--background);
+      color: var(--primary);
+      margin: 0;
+      padding: 1.5em;
+      display: flex;
+      justify-content: center;
     }
-    h2 {
-      background: #b71c1c;
-      color: #ffeb3b;
-      padding: 0.5em;
-      border-radius: 10px;
-    }
-    label, select, button {
-      margin-top: 1em;
-      font-size: 1.1em;
-    }
-    select, button {
-      padding: 0.5em;
+
+    .container {
+      max-width: 500px;
       width: 100%;
-      border-radius: 5px;
-      border: 1px solid #b71c1c;
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 2em;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
+
+    h2 {
+      text-align: center;
+      background: var(--primary);
+      color: var(--accent);
+      padding: 0.6em;
+      border-radius: var(--border-radius);
+      margin-bottom: 1.2em;
+    }
+
+    label {
+      display: block;
+      margin-top: 1.2em;
+      font-weight: 600;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 0.6em;
+      margin-top: 0.4em;
+      font-size: 1em;
+      border-radius: 6px;
+      border: 1px solid var(--primary);
+    }
+
     button {
-      background: #b71c1c;
-      color: #ffeb3b;
+      background: var(--primary);
+      color: var(--accent);
       font-weight: bold;
       cursor: pointer;
-    }
-    video, canvas, img {
       margin-top: 1em;
-      border: 2px solid #b71c1c;
-      border-radius: 10px;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: #a31414;
+    }
+
+    .student-info {
+      margin-top: 1.5em;
+      padding: 1em;
+      background: var(--accent);
+      color: var(--primary);
+      font-weight: bold;
+      border-radius: var(--border-radius);
+    }
+
+    img, video, canvas {
+      display: block;
+      margin: 1em auto;
+      border: 2px solid var(--primary);
+      border-radius: var(--border-radius);
       width: 100%;
       max-width: 300px;
     }
-    .student-info {
-      margin-top: 1em;
-      padding: 1em;
-      background: #ffeb3b;
-      color: #b71c1c;
-      font-weight: bold;
-      border-radius: 10px;
+
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+      gap: 1em;
+      flex-wrap: wrap;
     }
+
+    .button-group button {
+      flex: 1;
+    }
+
     #canvasPreview {
       display: none;
     }
+
     #status {
-      margin-top: 1em;
+      text-align: center;
       font-weight: bold;
+      margin-top: 1em;
     }
   </style>
 </head>
 <body>
-  <h2>📸 Student Image Uploader</h2>
+  <div class="container">
+    <h2>📸 Student Image Uploader</h2>
 
-  <label for="sheetSelect">📄 Select Class & Section:</label>
-  <select id="sheetSelect"></select>
+    <label for="sheetSelect">📄 Select Class & Section:</label>
+    <select id="sheetSelect"></select>
 
-  <label for="rollSelect">🔢 Select Roll No:</label>
-  <select id="rollSelect"></select>
+    <label for="rollSelect">🔢 Select Roll No:</label>
+    <select id="rollSelect"></select>
 
-  <div class="student-info">
-    <div id="studentName">👤 Name: </div>
-    <div id="studentCode">🆔 Code: </div>
+    <div class="student-info">
+      <div id="studentName">👤 Name: </div>
+      <div id="studentCode">🆔 Code: </div>
+    </div>
+
+    <img id="studentImage" style="display:none;" />
+
+    <video id="video" autoplay playsinline></video>
+
+    <div class="button-group">
+      <button onclick="captureImage()">📷 Capture</button>
+      <button onclick="uploadImage()">⬆️ Upload</button>
+      <button onclick="swapCamera()">🔄 Swap</button>
+    </div>
+
+    <canvas id="canvasPreview" width="300" height="390"></canvas>
+
+    <div id="status"></div>
+
+    <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
   </div>
-
-  <img id="studentImage" style="display:none;" />
-
-  <video id="video" autoplay playsinline></video>
-  <button onclick="captureImage()">📷 Capture Image</button>
-
-  <canvas id="canvasPreview" width="300" height="390"></canvas>
-  <button onclick="uploadImage()">⬆️ Upload Image</button>
-  <button onclick="swapCamera()">🔄 Swap Camera</button>
-
-  <div id="status"></div>
-
-  <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
 
   <script>
     const scriptUrl = 'https://script.google.com/macros/s/AKfycbznORBjmmwhEJDrMt8EH_jlJKsdWZBz-0sv94sB7lPS3JD6qhMuf1WHoTHLlOizQTmN/exec';
