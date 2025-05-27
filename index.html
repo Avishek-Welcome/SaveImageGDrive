@@ -1,15 +1,128 @@
-<!-- Inside <body> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MHS Student Image Uploader</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #fefae0;
+      color: #3e2723;
+      margin: 0;
+      padding: 2em;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 500px;
+      width: 100%;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 2em;
+    }
+
+    h2 {
+      text-align: center;
+      background: #b71c1c;
+      color: #fff9c4;
+      padding: 0.8em;
+      border-radius: 12px;
+      margin-bottom: 1.5em;
+      font-size: 1.5em;
+    }
+
+    label {
+      display: block;
+      margin-top: 1em;
+      font-weight: 600;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 0.7em;
+      margin-top: 0.5em;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+    }
+
+    button {
+      background-color: #b71c1c;
+      color: #fffde7;
+      font-weight: 600;
+      border: none;
+      margin-top: 1em;
+      transition: background 0.3s;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #880e4f;
+    }
+
+    video, canvas, img {
+      width: 100%;
+      max-width: 320px;
+      margin-top: 1em;
+      border-radius: 12px;
+      border: 2px solid #b71c1c;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .student-info {
+      margin-top: 1em;
+      padding: 1em;
+      background: #fff9c4;
+      border: 1px solid #fbc02d;
+      border-radius: 12px;
+      text-align: center;
+      font-weight: 600;
+      color: #5d4037;
+    }
+
+    #status {
+      margin-top: 1em;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    #canvasPreview {
+      display: none;
+    }
+
+    #progressContainer {
+      margin-top: 0.5em;
+      display: none;
+    }
+
+    progress {
+      width: 100%;
+      height: 10px;
+    }
+
+    .camera-controls {
+      text-align: center;
+      margin-top: 1em;
+    }
+
+    .spacer {
+      height: 1em;
+    }
+  </style>
+</head>
 <body>
   <div class="container">
     <h2>📸 Student Image Uploader</h2>
 
     <label for="sheetSelect">📄 Class & Section</label>
     <select id="sheetSelect"></select>
-
-    <!-- Progress Bar -->
-    <div id="progressContainer" style="margin-top: 0.5em; height: 8px; background: #eee; border-radius: 4px; display: none;">
-      <div id="progressBar" style="width: 0%; height: 100%; background-color: #b71c1c; border-radius: 4px;"></div>
-    </div>
+    <div id="progressContainer"><progress id="progressBar" max="100" value="0"></progress></div>
 
     <label for="rollSelect">🔢 Roll Number</label>
     <select id="rollSelect"></select>
@@ -21,9 +134,10 @@
 
     <img id="studentImage" style="display:none;" />
 
-    <!-- Moved Swap Button here -->
-    <button onclick="swapCamera()">🔄 Swap Camera</button>
-    
+    <div class="camera-controls">
+      <button onclick="swapCamera()">🔄 Swap Camera</button>
+    </div>
+
     <video id="video" autoplay playsinline></video>
 
     <button onclick="captureImage()">📷 Capture Image</button>
@@ -41,33 +155,28 @@
     let useFrontCamera = true;
 
     async function loadSheets() {
-      const progressContainer = document.getElementById('progressContainer');
+      document.getElementById('progressContainer').style.display = 'block';
       const progressBar = document.getElementById('progressBar');
-      progressContainer.style.display = 'block';
-      progressBar.style.width = '0%';
+      progressBar.value = 10;
 
-      try {
-        progressBar.style.width = '25%';
-        const res = await fetch(scriptUrl);
-        progressBar.style.width = '60%';
-        const sheetNames = await res.json();
-        progressBar.style.width = '90%';
+      const res = await fetch(scriptUrl);
+      progressBar.value = 40;
 
-        const select = document.getElementById('sheetSelect');
-        select.innerHTML = '<option value="">--Select Sheet--</option>';
-        sheetNames.forEach(name => {
-          const opt = document.createElement('option');
-          opt.value = name;
-          opt.textContent = name;
-          select.appendChild(opt);
-        });
+      const sheetNames = await res.json();
+      const select = document.getElementById('sheetSelect');
+      select.innerHTML = '<option value="">--Select Sheet--</option>';
+      sheetNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
 
-        progressBar.style.width = '100%';
-        setTimeout(() => progressContainer.style.display = 'none', 500);
-      } catch (error) {
-        console.error('Error loading sheets:', error);
-        progressContainer.style.display = 'none';
-      }
+      progressBar.value = 100;
+      setTimeout(() => {
+        document.getElementById('progressContainer').style.display = 'none';
+        progressBar.value = 0;
+      }, 800);
     }
 
     async function loadRolls(sheetName) {
@@ -199,3 +308,4 @@
     startCamera();
   </script>
 </body>
+</html>
