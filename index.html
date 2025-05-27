@@ -3,123 +3,96 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Student Image Uploader</title>
+  <title>MHS Student Image Uploader</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     body {
-      margin: 0;
-      padding: 0;
       font-family: 'Poppins', sans-serif;
-      background: #f4f4f4;
-      color: #222;
+      background: #fefae0;
+      color: #3e2723;
+      margin: 0;
+      padding: 2em;
       display: flex;
       justify-content: center;
     }
 
     .container {
+      max-width: 500px;
       width: 100%;
-      max-width: 480px;
-      padding: 1rem;
       background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-      margin: 1rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 2em;
     }
 
     h2 {
       text-align: center;
-      background: #c62828;
-      color: white;
-      padding: 1rem;
+      background: #b71c1c;
+      color: #fff9c4;
+      padding: 0.8em;
       border-radius: 12px;
-      font-size: 1.3rem;
+      margin-bottom: 1.5em;
+      font-size: 1.5em;
     }
 
     label {
       display: block;
+      margin-top: 1em;
       font-weight: 600;
-      margin-top: 1rem;
     }
 
     select, button {
       width: 100%;
-      padding: 0.8rem;
-      font-size: 1rem;
-      margin-top: 0.3rem;
-      border: 1px solid #ccc;
+      padding: 0.7em;
+      margin-top: 0.5em;
       border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1em;
     }
 
     button {
-      background-color: #c62828;
-      color: white;
+      background-color: #b71c1c;
+      color: #fffde7;
       font-weight: 600;
       border: none;
-      margin-top: 1rem;
+      margin-top: 1em;
+      transition: background 0.3s;
     }
 
     button:hover {
-      background-color: #8e0000;
-    }
-
-    .info-box {
-      background: #fff3cd;
-      border-left: 5px solid #ffeb3b;
-      padding: 0.8rem;
-      margin-top: 1rem;
-      border-radius: 8px;
-    }
-
-    .info-box div {
-      margin: 0.2rem 0;
+      background-color: #880e4f;
     }
 
     video, canvas, img {
-      display: block;
       width: 100%;
-      max-width: 100%;
-      margin-top: 1rem;
+      max-width: 320px;
+      margin-top: 1em;
       border-radius: 12px;
-      border: 2px solid #c62828;
+      border: 2px solid #b71c1c;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
     }
 
-    .camera-controls {
+    .student-info {
+      margin-top: 1em;
+      padding: 1em;
+      background: #fff9c4;
+      border: 1px solid #fbc02d;
+      border-radius: 12px;
       text-align: center;
-      margin-top: 1rem;
+      font-weight: 600;
+      color: #5d4037;
+    }
+
+    #status {
+      margin-top: 1em;
+      font-weight: 600;
+      text-align: center;
     }
 
     #canvasPreview {
       display: none;
-    }
-
-    #status {
-      margin-top: 1rem;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    #progressContainer {
-      margin-top: 0.5rem;
-      display: none;
-    }
-
-    progress {
-      width: 100%;
-      height: 10px;
-    }
-
-    @media screen and (max-width: 480px) {
-      h2 {
-        font-size: 1.2rem;
-      }
-
-      button, select {
-        font-size: 1rem;
-      }
     }
   </style>
 </head>
@@ -127,33 +100,31 @@
   <div class="container">
     <h2>📸 Student Image Uploader</h2>
 
-    <label for="sheetSelect">Class & Section</label>
+    <label for="sheetSelect">📄 Class & Section</label>
     <select id="sheetSelect"></select>
-    <div id="progressContainer"><progress id="progressBar" max="100" value="0"></progress></div>
 
-    <label for="rollSelect">Roll Number</label>
+    <label for="rollSelect">🔢 Roll Number</label>
     <select id="rollSelect"></select>
 
-    <div class="info-box">
+    <div class="student-info">
       <div id="studentName">👤 Name: </div>
       <div id="studentCode">🆔 Code: </div>
     </div>
 
     <img id="studentImage" style="display:none;" />
 
-    <div class="camera-controls">
-      <button onclick="swapCamera()">🔄 Swap Camera</button>
-    </div>
-
     <video id="video" autoplay playsinline></video>
+
     <button onclick="captureImage()">📷 Capture Image</button>
     <canvas id="canvasPreview" width="300" height="390"></canvas>
     <button onclick="uploadImage()">⬆️ Upload Image</button>
+    <button onclick="swapCamera()">🔄 Swap Camera</button>
 
     <div id="status"></div>
     <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
   </div>
 
+  <!-- JavaScript (unchanged) -->
   <script>
     const scriptUrl = 'https://script.google.com/macros/s/AKfycbznORBjmmwhEJDrMt8EH_jlJKsdWZBz-0sv94sB7lPS3JD6qhMuf1WHoTHLlOizQTmN/exec';
     let students = [];
@@ -161,13 +132,7 @@
     let useFrontCamera = true;
 
     async function loadSheets() {
-      document.getElementById('progressContainer').style.display = 'block';
-      const progressBar = document.getElementById('progressBar');
-      progressBar.value = 10;
-
       const res = await fetch(scriptUrl);
-      progressBar.value = 40;
-
       const sheetNames = await res.json();
       const select = document.getElementById('sheetSelect');
       select.innerHTML = '<option value="">--Select Sheet--</option>';
@@ -177,12 +142,6 @@
         opt.textContent = name;
         select.appendChild(opt);
       });
-
-      progressBar.value = 100;
-      setTimeout(() => {
-        document.getElementById('progressContainer').style.display = 'none';
-        progressBar.value = 0;
-      }, 800);
     }
 
     async function loadRolls(sheetName) {
@@ -203,18 +162,25 @@
 
     function updateStudentInfo(roll) {
       const student = students.find(s => s.roll === roll);
-      document.getElementById('studentName').textContent = `👤 Name: ${student?.name || ''}`;
-      document.getElementById('studentCode').textContent = `🆔 Code: ${student?.code || ''}`;
-      if (student?.code) showStudentImage(student.code);
-      else document.getElementById('studentImage').style.display = 'none';
+      const name = student ? student.name : '';
+      const code = student ? student.code : '';
+      document.getElementById('studentName').textContent = `👤 Name: ${name}`;
+      document.getElementById('studentCode').textContent = `🆔 Code: ${code}`;
+      if (code) {
+        showStudentImage(code);
+      } else {
+        document.getElementById('studentImage').style.display = 'none';
+      }
     }
 
     async function showStudentImage(code) {
       const form = new FormData();
       form.append('action', 'getImageIdByCode');
       form.append('code', code);
+
       const res = await fetch(scriptUrl, { method: 'POST', body: form });
       const result = await res.json();
+
       const img = document.getElementById('studentImage');
       if (result.status === 'found') {
         img.src = `https://drive.google.com/uc?export=view&id=${result.fileId}`;
@@ -260,6 +226,7 @@
       }
 
       document.getElementById('status').textContent = '⏳ Uploading...';
+
       const dataUrl = canvas.toDataURL('image/jpeg');
       const base64 = dataUrl.split(',')[1];
 
@@ -282,8 +249,14 @@
     }
 
     async function startCamera() {
-      if (currentStream) currentStream.getTracks().forEach(track => track.stop());
-      const constraints = { video: { facingMode: useFrontCamera ? 'user' : 'environment' } };
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? 'user' : 'environment'
+        }
+      };
       currentStream = await navigator.mediaDevices.getUserMedia(constraints);
       document.getElementById('video').srcObject = currentStream;
     }
