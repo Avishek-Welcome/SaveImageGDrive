@@ -3,101 +3,107 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MHS Student Image Uploader</title>
+  <title>Student Image Uploader</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: 'Poppins', sans-serif;
-      background: #fefae0;
-      color: #3e2723;
       margin: 0;
-      padding: 2em;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+      background: #f4f4f4;
+      color: #222;
       display: flex;
       justify-content: center;
     }
 
     .container {
-      max-width: 500px;
       width: 100%;
+      max-width: 480px;
+      padding: 1rem;
       background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-      padding: 2em;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      margin: 1rem;
     }
 
     h2 {
       text-align: center;
-      background: #b71c1c;
-      color: #fff9c4;
-      padding: 0.8em;
+      background: #c62828;
+      color: white;
+      padding: 1rem;
       border-radius: 12px;
-      margin-bottom: 1.5em;
-      font-size: 1.5em;
+      font-size: 1.3rem;
     }
 
     label {
       display: block;
-      margin-top: 1em;
       font-weight: 600;
+      margin-top: 1rem;
     }
 
     select, button {
       width: 100%;
-      padding: 0.7em;
-      margin-top: 0.5em;
-      border-radius: 8px;
+      padding: 0.8rem;
+      font-size: 1rem;
+      margin-top: 0.3rem;
       border: 1px solid #ccc;
-      font-size: 1em;
+      border-radius: 8px;
     }
 
     button {
-      background-color: #b71c1c;
-      color: #fffde7;
+      background-color: #c62828;
+      color: white;
       font-weight: 600;
       border: none;
-      margin-top: 1em;
-      transition: background 0.3s;
-      cursor: pointer;
+      margin-top: 1rem;
     }
 
     button:hover {
-      background-color: #880e4f;
+      background-color: #8e0000;
+    }
+
+    .info-box {
+      background: #fff3cd;
+      border-left: 5px solid #ffeb3b;
+      padding: 0.8rem;
+      margin-top: 1rem;
+      border-radius: 8px;
+    }
+
+    .info-box div {
+      margin: 0.2rem 0;
     }
 
     video, canvas, img {
-      width: 100%;
-      max-width: 320px;
-      margin-top: 1em;
-      border-radius: 12px;
-      border: 2px solid #b71c1c;
       display: block;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .student-info {
-      margin-top: 1em;
-      padding: 1em;
-      background: #fff9c4;
-      border: 1px solid #fbc02d;
+      width: 100%;
+      max-width: 100%;
+      margin-top: 1rem;
       border-radius: 12px;
-      text-align: center;
-      font-weight: 600;
-      color: #5d4037;
+      border: 2px solid #c62828;
     }
 
-    #status {
-      margin-top: 1em;
-      font-weight: 600;
+    .camera-controls {
       text-align: center;
+      margin-top: 1rem;
     }
 
     #canvasPreview {
       display: none;
     }
 
+    #status {
+      margin-top: 1rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
     #progressContainer {
-      margin-top: 0.5em;
+      margin-top: 0.5rem;
       display: none;
     }
 
@@ -106,13 +112,14 @@
       height: 10px;
     }
 
-    .camera-controls {
-      text-align: center;
-      margin-top: 1em;
-    }
+    @media screen and (max-width: 480px) {
+      h2 {
+        font-size: 1.2rem;
+      }
 
-    .spacer {
-      height: 1em;
+      button, select {
+        font-size: 1rem;
+      }
     }
   </style>
 </head>
@@ -120,14 +127,14 @@
   <div class="container">
     <h2>📸 Student Image Uploader</h2>
 
-    <label for="sheetSelect">📄 Class & Section</label>
+    <label for="sheetSelect">Class & Section</label>
     <select id="sheetSelect"></select>
     <div id="progressContainer"><progress id="progressBar" max="100" value="0"></progress></div>
 
-    <label for="rollSelect">🔢 Roll Number</label>
+    <label for="rollSelect">Roll Number</label>
     <select id="rollSelect"></select>
 
-    <div class="student-info">
+    <div class="info-box">
       <div id="studentName">👤 Name: </div>
       <div id="studentCode">🆔 Code: </div>
     </div>
@@ -139,7 +146,6 @@
     </div>
 
     <video id="video" autoplay playsinline></video>
-
     <button onclick="captureImage()">📷 Capture Image</button>
     <canvas id="canvasPreview" width="300" height="390"></canvas>
     <button onclick="uploadImage()">⬆️ Upload Image</button>
@@ -197,25 +203,18 @@
 
     function updateStudentInfo(roll) {
       const student = students.find(s => s.roll === roll);
-      const name = student ? student.name : '';
-      const code = student ? student.code : '';
-      document.getElementById('studentName').textContent = `👤 Name: ${name}`;
-      document.getElementById('studentCode').textContent = `🆔 Code: ${code}`;
-      if (code) {
-        showStudentImage(code);
-      } else {
-        document.getElementById('studentImage').style.display = 'none';
-      }
+      document.getElementById('studentName').textContent = `👤 Name: ${student?.name || ''}`;
+      document.getElementById('studentCode').textContent = `🆔 Code: ${student?.code || ''}`;
+      if (student?.code) showStudentImage(student.code);
+      else document.getElementById('studentImage').style.display = 'none';
     }
 
     async function showStudentImage(code) {
       const form = new FormData();
       form.append('action', 'getImageIdByCode');
       form.append('code', code);
-
       const res = await fetch(scriptUrl, { method: 'POST', body: form });
       const result = await res.json();
-
       const img = document.getElementById('studentImage');
       if (result.status === 'found') {
         img.src = `https://drive.google.com/uc?export=view&id=${result.fileId}`;
@@ -261,7 +260,6 @@
       }
 
       document.getElementById('status').textContent = '⏳ Uploading...';
-
       const dataUrl = canvas.toDataURL('image/jpeg');
       const base64 = dataUrl.split(',')[1];
 
@@ -284,14 +282,8 @@
     }
 
     async function startCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
-      const constraints = {
-        video: {
-          facingMode: useFrontCamera ? 'user' : 'environment'
-        }
-      };
+      if (currentStream) currentStream.getTracks().forEach(track => track.stop());
+      const constraints = { video: { facingMode: useFrontCamera ? 'user' : 'environment' } };
       currentStream = await navigator.mediaDevices.getUserMedia(constraints);
       document.getElementById('video').srcObject = currentStream;
     }
