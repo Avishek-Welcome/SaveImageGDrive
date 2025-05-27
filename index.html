@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student Image Uploader</title>
   <style>
     body {
@@ -58,12 +58,12 @@
       margin-top: 1em;
       font-weight: bold;
     }
-    #studentImage {
+    #previewImage {
       margin-top: 1em;
-      max-width: 300px;
+      max-width: 100%;
+      max-height: 300px;
       border: 2px solid #b71c1c;
       border-radius: 10px;
-      display: none;
     }
   </style>
 </head>
@@ -73,14 +73,15 @@
   <label for="sheetSelect">📄 Select Sheet:</label>
   <select id="sheetSelect"></select>
 
-  <label for="rollSelect">🔢 Select Roll No:</label>
+  <label for="rollSelect">🕧 Select Roll No:</label>
   <select id="rollSelect"></select>
 
   <div class="student-info">
     <div id="studentName">👤 Name: </div>
-    <div id="studentCode">🆔 Code: </div>
-    <img id="studentImage" src="" alt="Student Image"/>
+    <div id="studentCode">🄚 Code: </div>
   </div>
+
+  <img id="previewImage" src="" alt="Preview" />
 
   <button onclick="swapCamera()">🔄 Swap Camera</button>
   <video id="video" autoplay playsinline></video><br>
@@ -89,10 +90,15 @@
   <button onclick="uploadImage()">⬆️ Upload Image</button>
 
   <div id="status"></div>
+
   <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
 
   <script>
     const scriptUrl = 'https://script.google.com/macros/s/AKfycbzDHPmoxRsdXnutU4pSP9FWUOdl5-EC9FZVrUGflNMRjwT42S-z_5Vj4QyL5sjbkxQY/exec';
+    const driveImageBase = 'https://drive.google.com/uc?export=view&id=';
+    const imageMap = {
+      // Add the known mappings: 'CODE': 'DRIVE_FILE_ID'
+    };
     let students = [];
     let currentStream;
     let useFrontCamera = true;
@@ -110,4 +116,123 @@
       });
     }
 
-    async function loadRolls(sheetNa
+    async function loadRolls(sheetName) {
+      const form = new FormData();
+      form.append('action', 'getStudents');
+      form.append('sheetName', sheetName);
+      const res = await fetch(scriptUrl, { method: 'POST', body: form });
+      students = await res.json();
+      const rollSelect = document.getElementById('rollSelect');
+      rollSelect.innerHTML = '<option value="">--Select Roll No--</option>';
+      students.forEach(st => {
+        const opt = document.createElement('option');
+        opt.value = st.roll;
+        opt.textContent = st.roll;
+        rollSelect.appendChild(opt);
+      });
+    }
+
+    function updateStudentInfo(roll) {
+      const student = students.find(s => s.roll === roll);
+      if (!student) return;
+
+      document.getElementById('studentName').textContent = `👤 Name: ${student.name}`;
+      document.getElementById('studentCode').textContent = `🄚 Code: ${student.code}`;
+
+      const previewImage = document.getElementById('previewImage');
+      const imageId = imageMap[student.code];
+
+      if (imageId) {
+        previewImage.src = driveImageBase + imageId;
+        previewImage.alt = `${student.code}.jpg`;
+      } else {
+        previewImage.src = '';
+        previewImage.alt = 'No Preview';
+        previewImage.style.display = 'block';
+      }
+    }
+
+    function captureImage() {
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvasPreview');
+      const ctx = canvas.getContext('2d');
+      const { videoWidth, videoHeight } = video;
+
+      const targetRatio = 300 / 390;
+      const actualRatio = videoWidth / videoHeight;
+
+      let sx, sy, sWidth, sHeight;
+      if (actualRatio > targetRatio) {
+        sHeight = videoHeight;
+        sWidth = sHeight * targetRatio;
+        sx = (videoWidth - sWidth) / 2;
+        sy = 0;
+      } else {
+        sWidth = videoWidth;
+        sHeight = sWidth / targetRatio;
+        sx = 0;
+        sy = (videoHeight - sHeight) / 2;
+      }
+
+      ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, 300, 390);
+      canvas.style.display = 'block';
+    }
+
+    async function uploadImage() {
+      const canvas = document.getElementById('canvasPreview');
+      const roll = document.getElementById('rollSelect').value;
+      const student = students.find(s => s.roll === roll);
+      if (!student || !canvas.toDataURL) {
+        document.getElementById('status').textContent = '⚠️ Select a student and capture image first.';
+        return;
+      }
+
+      document.getElementById('status').textContent = '⏳ Uploading...';
+
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      const base64 = dataUrl.split(',')[1];
+
+      const form = new FormData();
+      form.append('action', 'uploadImage');
+      form.append('code', student.code);
+      form.append('image', base64);
+      form.append('mimeType', 'image/jpeg');
+
+      const res = await fetch(scriptUrl, { method: 'POST', body: form });
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        document.getElementById('status').textContent = '✅ Image uploaded successfully!';
+        document.getElementById('thankYouAudio').play();
+        setTimeout(() => window.close(), 3000);
+      } else {
+        document.getElementById('status').textContent = '❌ Upload failed: ' + result.message;
+      }
+    }
+
+    async function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? 'user' : 'environment'
+        }
+      };
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      document.getElementById('video').srcObject = currentStream;
+    }
+
+    function swapCamera() {
+      useFrontCamera = !useFrontCamera;
+      startCamera();
+    }
+
+    document.getElementById('sheetSelect').addEventListener('change', e => loadRolls(e.target.value));
+    document.getElementById('rollSelect').addEventListener('change', e => updateStudentInfo(e.target.value));
+
+    loadSheets();
+    startCamera();
+  </script>
+</body>
+</html>
