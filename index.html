@@ -51,11 +51,16 @@
       margin-top: 1em;
       font-weight: bold;
     }
-    #loader {
+    #loading {
       display: none;
       margin-top: 1em;
-      font-weight: bold;
       color: green;
+    }
+    #swapCamera {
+      margin-top: 1em;
+      background: #ffeb3b;
+      color: #b71c1c;
+      border: 1px solid #b71c1c;
     }
   </style>
 </head>
@@ -73,20 +78,22 @@
     <div id="studentCode">🆔 Code: </div>
   </div>
 
-  <video id="video" autoplay playsinline width="300" height="390"></video>
+  <video id="video" autoplay playsinline></video>
+  <button id="swapCamera">🔁 Swap Camera</button>
   <button onclick="captureImage()">📷 Capture Image</button>
-  <canvas id="canvas" width="300" height="390" style="display:none;"></canvas>
+  <canvas id="canvas" width="325" height="422" style="display:none;"></canvas>
   <button onclick="uploadImage()">⬆️ Upload Image</button>
 
-  <div id="loader">⏳ Uploading, please wait...</div>
+  <div id="loading">⏳ Uploading...</div>
   <div id="status"></div>
 
-  <audio id="thankYouAudio" src="https://upload.wikimedia.org/wikipedia/commons/4/4f/Thank_you_female_voice.mp3"></audio>
+  <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/human_voices/female_thank_you.ogg"></audio>
 
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzDHPmoxRsdXnutU4pSP9FWUOdl5-EC9FZVrUGflNMRjwT42S-z_5Vj4QyL5sjbkxQY/exec'; // Replace with your script URL
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzDHPmoxRsdXnutU4pSP9FWUOdl5-EC9FZVrUGflNMRjwT42S-z_5Vj4QyL5sjbkxQY/exec';
     let students = [];
-    let currentStream = null;
+    let currentStream;
+    let useFrontCamera = true;
 
     async function loadSheets() {
       const res = await fetch(scriptUrl);
@@ -135,17 +142,12 @@
       const canvas = document.getElementById('canvas');
       const roll = document.getElementById('rollSelect').value;
       const student = students.find(s => s.roll === roll);
-      const loader = document.getElementById('loader');
-      const statusDiv = document.getElementById('status');
-
       if (!student || !canvas.toDataURL) {
-        statusDiv.textContent = '⚠️ Select a student and capture image first.';
+        document.getElementById('status').textContent = '⚠️ Select a student and capture image first.';
         return;
       }
 
-      loader.style.display = 'block';
-      statusDiv.textContent = '';
-
+      document.getElementById('loading').style.display = 'block';
       const dataUrl = canvas.toDataURL('image/jpeg');
       const base64 = dataUrl.split(',')[1];
 
@@ -157,16 +159,12 @@
 
       const res = await fetch(scriptUrl, { method: 'POST', body: form });
       const result = await res.json();
-      loader.style.display = 'none';
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('status').textContent = result.status === 'success' ? '✅ Image uploaded successfully!' : '❌ Upload failed: ' + result.message;
 
       if (result.status === 'success') {
-        statusDiv.textContent = '✅ Image uploaded successfully!';
         document.getElementById('thankYouAudio').play();
-        setTimeout(() => {
-          window.close();
-        }, 3000);
-      } else {
-        statusDiv.textContent = '❌ Upload failed: ' + result.message;
+        setTimeout(() => window.close(), 4000);
       }
     }
 
@@ -175,22 +173,28 @@
         currentStream.getTracks().forEach(track => track.stop());
       }
 
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? 'user' : 'environment',
+          width: { ideal: 325 },
+          height: { ideal: 422 },
+          aspectRatio: 0.769
+        }
+      };
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'user' },
-            aspectRatio: 0.769
-          }
-        });
-        document.getElementById('video').srcObject = stream;
-        currentStream = stream;
-      } catch (error) {
-        console.error('Camera start error:', error);
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        document.getElementById('video').srcObject = currentStream;
+      } catch (err) {
+        console.error('Camera start error:', err);
       }
     }
 
     document.getElementById('sheetSelect').addEventListener('change', e => loadRolls(e.target.value));
     document.getElementById('rollSelect').addEventListener('change', e => updateStudentInfo(e.target.value));
+    document.getElementById('swapCamera').addEventListener('click', () => {
+      useFrontCamera = !useFrontCamera;
+      startCamera();
+    });
 
     loadSheets();
     startCamera();
