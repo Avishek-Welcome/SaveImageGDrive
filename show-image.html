@@ -2,22 +2,37 @@
 <html>
   <head>
     <base target="_top">
+    <title>Student's Picture Display</title>
     <style>
       body {
         font-family: Arial, sans-serif;
+        max-width: 500px;
+        margin: 2rem auto;
         text-align: center;
-        margin: 2rem;
       }
-      input, button {
+      h2 {
+        margin-bottom: 1rem;
+      }
+      input {
         padding: 10px;
+        width: 100%;
         font-size: 16px;
+        margin-bottom: 1rem;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
       }
       img {
         margin-top: 20px;
-        max-width: 90%;
-        height: auto;
+        max-width: 100%;
         border: 2px solid #ccc;
         border-radius: 10px;
+      }
+      .error {
+        color: red;
+        margin-top: 1rem;
       }
     </style>
   </head>
@@ -30,23 +45,27 @@
     <script>
       let imageMap = {};
 
-      function showImage() {
-        const name = document.getElementById("imgName").value.trim();
-        const url = imageMap[name];
-        const output = document.getElementById("output");
-
-        if (url) {
-          output.innerHTML = `<img src="${url}" alt="${name}" />`;
-        } else {
-          output.innerHTML = `<p style="color:red;">Image "${name}" not found.</p>
-                              <img src="https://via.placeholder.com/400x300?text=No+Image+Found" />`;
-        }
-      }
-
-      // Load image map on load
-      google.script.run.withSuccessHandler((data) => {
+      // Load image list from Apps Script
+      google.script.run.withSuccessHandler(function(data) {
         imageMap = data;
       }).getImageList();
+
+      function showImage() {
+        const input = document.getElementById("imgName").value.trim();
+        const output = document.getElementById("output");
+
+        if (!input) {
+          output.innerHTML = `<p class="error">Please enter a filename.</p>`;
+          return;
+        }
+
+        const url = imageMap[input];
+        if (url) {
+          output.innerHTML = `<img src="${url}" alt="${input}" />`;
+        } else {
+          output.innerHTML = `<p class="error">Image "${input}" not found.</p>`;
+        }
+      }
     </script>
   </body>
 </html>
