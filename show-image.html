@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: Arial, sans-serif; text-align: center; margin: 2rem; }
+      input, button { padding: 10px; font-size: 16px; }
+      img { margin-top: 20px; max-width: 90%; height: auto; }
+    </style>
+  </head>
+  <body>
+    <h2>Student's Picture Display</h2>
+    <input type="text" id="imgName" placeholder="Enter image filename" />
+    <button onclick="showImage()">Show Picture</button>
+    <div id="output"></div>
+
+    <script>
+      let imageMap = {};
+
+      function showImage() {
+        const name = document.getElementById("imgName").value.trim();
+        const url = imageMap[name];
+        const output = document.getElementById("output");
+        if (url) {
+          output.innerHTML = `<img src="${url}" alt="${name}" />`;
+        } else {
+          output.innerHTML = `<p style="color:red;">Image "${name}" not found.</p>`;
+        }
+      }
+
+      // Load image list from server
+      google.script.run.withSuccessHandler((data) => {
+        imageMap = data;
+      }).getImageList();
+    </script>
+  </body>
+</html>
