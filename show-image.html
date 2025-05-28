@@ -3,14 +3,27 @@
   <head>
     <base target="_top">
     <style>
-      body { font-family: Arial, sans-serif; text-align: center; margin: 2rem; }
-      input, button { padding: 10px; font-size: 16px; }
-      img { margin-top: 20px; max-width: 90%; height: auto; }
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 2rem;
+      }
+      input, button {
+        padding: 10px;
+        font-size: 16px;
+      }
+      img {
+        margin-top: 20px;
+        max-width: 90%;
+        height: auto;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+      }
     </style>
   </head>
   <body>
     <h2>Student's Picture Display</h2>
-    <input type="text" id="imgName" placeholder="Enter image filename" />
+    <input type="text" id="imgName" placeholder="Enter image filename (e.g., 12345.jpg)" />
     <button onclick="showImage()">Show Picture</button>
     <div id="output"></div>
 
@@ -21,14 +34,16 @@
         const name = document.getElementById("imgName").value.trim();
         const url = imageMap[name];
         const output = document.getElementById("output");
+
         if (url) {
           output.innerHTML = `<img src="${url}" alt="${name}" />`;
         } else {
-          output.innerHTML = `<p style="color:red;">Image "${name}" not found.</p>`;
+          output.innerHTML = `<p style="color:red;">Image "${name}" not found.</p>
+                              <img src="https://via.placeholder.com/400x300?text=No+Image+Found" />`;
         }
       }
 
-      // Load image list from server
+      // Load image map on load
       google.script.run.withSuccessHandler((data) => {
         imageMap = data;
       }).getImageList();
