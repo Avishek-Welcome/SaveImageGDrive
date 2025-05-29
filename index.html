@@ -115,44 +115,34 @@
 
     <video id="video" autoplay playsinline></video>
 
-    <button onclick="swapCamera()">🔄 Swap Camera</button>
     <button onclick="captureImage()">📷 Capture Image</button>
     <canvas id="canvasPreview" width="300" height="390"></canvas>
     <button onclick="uploadImage()">⬆️ Upload Image</button>
-
-    <a href="show-image.html" target="_blank">
-      <button>🖼️ Show My Image</button>
-    </a>
+    <button onclick="swapCamera()">🔄 Swap Camera</button>
 
     <div id="status"></div>
     <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
   </div>
 
+  <!-- JavaScript (unchanged) -->
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyYaHlJdgyGl-LF2VquleHE8WU6fRMzo6iHooF5cFwWEgGoTUNH0Dc3cRzPOrSllFIE/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwIlaq0ub9PMzorrYYxDliS_uhGqZdvy5a0VObtkqFYfeT0w4-QwUkBb1c_Ob2Yl-By/exec';
     let students = [];
     let currentStream;
     let useFrontCamera = true;
 
-  async function loadSheets() {
-  try {
-    const res = await fetch(scriptUrl);
-    const sheetNames = await res.json();
-    console.log("Sheet Names:", sheetNames);  // Debug
-    const select = document.getElementById('sheetSelect');
-    select.innerHTML = '<option value="">--Select Class & Section--</option>';
-    sheetNames.forEach(name => {
-      const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
-      select.appendChild(opt);
-    });
-  } catch (error) {
-    console.error("Error loading sheets:", error);
-    document.getElementById('status').textContent = "❌ Could not load Class & Section list.";
-  }
-}
-
+    async function loadSheets() {
+      const res = await fetch(scriptUrl);
+      const sheetNames = await res.json();
+      const select = document.getElementById('sheetSelect');
+      select.innerHTML = '<option value="">--Select Sheet--</option>';
+      sheetNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+    }
 
     async function loadRolls(sheetName) {
       const form = new FormData();
@@ -229,7 +219,6 @@
     async function uploadImage() {
       const canvas = document.getElementById('canvasPreview');
       const roll = document.getElementById('rollSelect').value;
-      const sheetName = document.getElementById('sheetSelect').value;
       const student = students.find(s => s.roll === roll);
       if (!student || !canvas.toDataURL) {
         document.getElementById('status').textContent = '⚠️ Select a student and capture image first.';
@@ -244,7 +233,6 @@
       const form = new FormData();
       form.append('action', 'uploadImage');
       form.append('code', student.code);
-      form.append('sheetName', sheetName);
       form.append('image', base64);
       form.append('mimeType', 'image/jpeg');
 
@@ -252,7 +240,7 @@
       const result = await res.json();
 
       if (result.status === 'success') {
-        document.getElementById('status').textContent = '✅ Image uploaded and link saved!';
+        document.getElementById('status').textContent = '✅ Image uploaded successfully!';
         document.getElementById('thankYouAudio').play();
         setTimeout(() => window.close(), 3000);
       } else {
