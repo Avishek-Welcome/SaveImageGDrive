@@ -1,157 +1,210 @@
-<script>
-  const scriptUrl = 'https://script.google.com/macros/s/AKfycbwLc6lGO6M7jZLfA-fEf1QINPIzKeX0RDqQ4rBYR6FveJRa9EduYixJ8IfbuUSXHyxh/exec';
-  let students = [];
-  let currentStream;
-  let useFrontCamera = true;
-
-  async function loadSheets() {
-    try {
-      const res = await fetch(scriptUrl);
-      const sheetNames = await res.json();
-      const select = document.getElementById('sheetSelect');
-      select.innerHTML = '<option value="">--Select Class & Section--</option>';
-      sheetNames.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        select.appendChild(opt);
-      });
-    } catch (err) {
-      console.error("Failed to load sheets:", err);
-      document.getElementById('sheetSelect').innerHTML = '<option value="">⚠️ Failed to load</option>';
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Photo Uploader</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 10px;
+      background: #f7f9fc;
     }
-  }
-
-  async function loadRolls(sheetName) {
-    const form = new FormData();
-    form.append('action', 'getStudents');
-    form.append('sheetName', sheetName);
-    const res = await fetch(scriptUrl, { method: 'POST', body: form });
-    students = await res.json();
-    const rollSelect = document.getElementById('rollSelect');
-    rollSelect.innerHTML = '<option value="">--Select Roll No--</option>';
-    students.forEach(st => {
-      const opt = document.createElement('option');
-      opt.value = st.roll;
-      opt.textContent = st.roll;
-      rollSelect.appendChild(opt);
-    });
-    // Reset student info
-    updateStudentInfo('');
-  }
-
-  function updateStudentInfo(roll) {
-    const student = students.find(s => s.roll === roll);
-    const name = student ? student.name : '';
-    const code = student ? student.code : '';
-    document.getElementById('studentName').textContent = `👤 Name: ${name}`;
-    document.getElementById('studentCode').textContent = `🆔 Code: ${code}`;
-    if (code) {
-      showStudentImage(code);
-    } else {
-      document.getElementById('studentImage').style.display = 'none';
+    select, button {
+      font-size: 16px;
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
     }
-  }
-
-  async function showStudentImage(code) {
-    const form = new FormData();
-    form.append('action', 'getImageIdByCode');
-    form.append('code', code);
-
-    const res = await fetch(scriptUrl, { method: 'POST', body: form });
-    const result = await res.json();
-
-    const img = document.getElementById('studentImage');
-    if (result.status === 'found') {
-      img.src = `https://drive.google.com/uc?export=view&id=${result.fileId}`;
-      img.style.display = 'block';
-    } else {
-      img.style.display = 'none';
+    video, canvas, img {
+      width: 300px;
+      max-width: 100%;
+      border: 2px solid #ccc;
+      margin: 10px 0;
     }
-  }
-
-  function captureImage() {
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvasPreview');
-    const ctx = canvas.getContext('2d');
-    const { videoWidth, videoHeight } = video;
-
-    const targetRatio = 300 / 390;
-    const actualRatio = videoWidth / videoHeight;
-
-    let sx, sy, sWidth, sHeight;
-    if (actualRatio > targetRatio) {
-      sHeight = videoHeight;
-      sWidth = sHeight * targetRatio;
-      sx = (videoWidth - sWidth) / 2;
-      sy = 0;
-    } else {
-      sWidth = videoWidth;
-      sHeight = sWidth / targetRatio;
-      sx = 0;
-      sy = (videoHeight - sHeight) / 2;
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+      color: green;
     }
+  </style>
+</head>
+<body>
+  <h2>📸 Student Photo Uploader</h2>
 
-    ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, 300, 390);
-    canvas.style.display = 'block';
-  }
+  <label for="sheetSelect">Class & Section:</label>
+  <select id="sheetSelect"></select>
 
-  async function uploadImage() {
-    const canvas = document.getElementById('canvasPreview');
-    const roll = document.getElementById('rollSelect').value;
-    const sheetName = document.getElementById('sheetSelect').value;
-    const student = students.find(s => s.roll === roll);
-    if (!student || !canvas.toDataURL || !sheetName) {
-      document.getElementById('status').textContent = '⚠️ Please select Class, Roll No, and capture image.';
-      return;
-    }
+  <label for="rollSelect">Roll Number:</label>
+  <select id="rollSelect"></select>
 
-    document.getElementById('status').textContent = '⏳ Uploading...';
+  <div id="studentInfo">
+    <p id="studentName">👤 Name:</p>
+    <p id="studentCode">🆔 Code:</p>
+  </div>
 
-    const dataUrl = canvas.toDataURL('image/jpeg');
-    const base64 = dataUrl.split(',')[1];
+  <video id="video" autoplay playsinline></video>
+  <br>
+  <button onclick="swapCamera()">🔄 Switch Camera</button>
+  <button onclick="captureImage()">📷 Capture Photo</button>
 
-    const form = new FormData();
-    form.append('action', 'uploadImage');
-    form.append('sheetName', sheetName);
-    form.append('code', student.code);
-    form.append('image', base64);
-    form.append('mimeType', 'image/jpeg');
+  <canvas id="canvasPreview" width="300" height="390" style="display:none;"></canvas>
 
-    const res = await fetch(scriptUrl, { method: 'POST', body: form });
-    const result = await res.json();
+  <img id="studentImage" style="display:none;" alt="Student Photo">
 
-    if (result.status === 'success') {
-      document.getElementById('status').textContent = '✅ Image uploaded successfully!';
-      document.getElementById('thankYouAudio').play();
-      showStudentImage(student.code); // Reload preview
-      setTimeout(() => window.close(), 3000);
-    } else {
-      document.getElementById('status').textContent = '❌ Upload failed: ' + result.message;
-    }
-  }
+  <button onclick="uploadImage()">⬆️ Upload Photo</button>
 
-  async function startCamera() {
-    if (currentStream) {
-      currentStream.getTracks().forEach(track => track.stop());
-    }
-    const constraints = {
-      video: {
-        facingMode: useFrontCamera ? 'user' : 'environment'
+  <p id="status"></p>
+
+  <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+
+  <script>
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzTdpVTZpSxvxqbdJEUhidYeS6z7BOP_IgmFI72omlOuzMuIGnGiNIR6OrPEqAnRzZl/exec';
+    let students = [];
+    let currentStream;
+    let useFrontCamera = true;
+
+    async function loadSheets() {
+      try {
+        const response = await fetch(scriptUrl + '?action=getSheets');
+        const sheetNames = await response.json();
+        const select = document.getElementById('sheetSelect');
+        select.innerHTML = '<option value="">--Select Class & Section--</option>';
+        sheetNames.forEach(name => {
+          const option = document.createElement('option');
+          option.value = name;
+          option.textContent = name;
+          select.appendChild(option);
+        });
+      } catch (err) {
+        document.getElementById('status').textContent = '❌ Failed to load Class & Section.';
+        console.error(err);
       }
-    };
-    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    document.getElementById('video').srcObject = currentStream;
-  }
+    }
 
-  function swapCamera() {
-    useFrontCamera = !useFrontCamera;
+    async function loadRolls(sheetName) {
+      const form = new FormData();
+      form.append('action', 'getStudents');
+      form.append('sheetName', sheetName);
+      const response = await fetch(scriptUrl, { method: 'POST', body: form });
+      students = await response.json();
+
+      const rollSelect = document.getElementById('rollSelect');
+      rollSelect.innerHTML = '<option value="">--Select Roll No--</option>';
+      students.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s.roll;
+        option.textContent = s.roll;
+        rollSelect.appendChild(option);
+      });
+    }
+
+    function updateStudentInfo(roll) {
+      const student = students.find(s => s.roll === roll);
+      const name = student?.name || '';
+      const code = student?.code || '';
+      document.getElementById('studentName').textContent = `👤 Name: ${name}`;
+      document.getElementById('studentCode').textContent = `🆔 Code: ${code}`;
+      if (code) showStudentImage(code);
+      else document.getElementById('studentImage').style.display = 'none';
+    }
+
+    async function showStudentImage(code) {
+      const form = new FormData();
+      form.append('action', 'getImageIdByCode');
+      form.append('code', code);
+      const res = await fetch(scriptUrl, { method: 'POST', body: form });
+      const result = await res.json();
+
+      const img = document.getElementById('studentImage');
+      if (result.status === 'found') {
+        img.src = `https://drive.google.com/uc?export=view&id=${result.fileId}`;
+        img.style.display = 'block';
+      } else {
+        img.style.display = 'none';
+      }
+    }
+
+    function captureImage() {
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvasPreview');
+      const ctx = canvas.getContext('2d');
+      const { videoWidth, videoHeight } = video;
+
+      const targetRatio = 300 / 390;
+      const actualRatio = videoWidth / videoHeight;
+
+      let sx, sy, sWidth, sHeight;
+      if (actualRatio > targetRatio) {
+        sHeight = videoHeight;
+        sWidth = sHeight * targetRatio;
+        sx = (videoWidth - sWidth) / 2;
+        sy = 0;
+      } else {
+        sWidth = videoWidth;
+        sHeight = sWidth / targetRatio;
+        sx = 0;
+        sy = (videoHeight - sHeight) / 2;
+      }
+
+      ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, 300, 390);
+      canvas.style.display = 'block';
+    }
+
+    async function uploadImage() {
+      const canvas = document.getElementById('canvasPreview');
+      const roll = document.getElementById('rollSelect').value;
+      const student = students.find(s => s.roll === roll);
+
+      if (!student || !canvas.toDataURL) {
+        document.getElementById('status').textContent = '⚠️ Select a student and capture image first.';
+        return;
+      }
+
+      document.getElementById('status').textContent = '⏳ Uploading...';
+
+      const base64 = canvas.toDataURL('image/jpeg').split(',')[1];
+
+      const form = new FormData();
+      form.append('action', 'uploadImage');
+      form.append('code', student.code);
+      form.append('image', base64);
+      form.append('mimeType', 'image/jpeg');
+
+      const response = await fetch(scriptUrl, { method: 'POST', body: form });
+      const result = await response.json();
+
+      if (result.status === 'success') {
+        document.getElementById('status').textContent = '✅ Image uploaded successfully!';
+        document.getElementById('thankYouAudio').play();
+        setTimeout(() => window.close(), 3000);
+      } else {
+        document.getElementById('status').textContent = '❌ Upload failed: ' + result.message;
+      }
+    }
+
+    async function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+      const constraints = {
+        video: { facingMode: useFrontCamera ? 'user' : 'environment' }
+      };
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      document.getElementById('video').srcObject = currentStream;
+    }
+
+    function swapCamera() {
+      useFrontCamera = !useFrontCamera;
+      startCamera();
+    }
+
+    // Event listeners
+    document.getElementById('sheetSelect').addEventListener('change', e => loadRolls(e.target.value));
+    document.getElementById('rollSelect').addEventListener('change', e => updateStudentInfo(e.target.value));
+
+    // Initialize
+    loadSheets();
     startCamera();
-  }
-
-  document.getElementById('sheetSelect').addEventListener('change', e => loadRolls(e.target.value));
-  document.getElementById('rollSelect').addEventListener('change', e => updateStudentInfo(e.target.value));
-
-  loadSheets();
-  startCamera();
-</script>
+  </script>
+</body>
+</html>
