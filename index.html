@@ -6,7 +6,94 @@
   <title>MHS Student Image Uploader</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    /* Your existing CSS styles */
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #fefae0;
+      color: #3e2723;
+      margin: 0;
+      padding: 2em;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 500px;
+      width: 100%;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 2em;
+    }
+
+    h2 {
+      text-align: center;
+      background: #b71c1c;
+      color: #fff9c4;
+      padding: 0.8em;
+      border-radius: 12px;
+      margin-bottom: 1.5em;
+      font-size: 1.5em;
+    }
+
+    label {
+      display: block;
+      margin-top: 1em;
+      font-weight: 600;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 0.7em;
+      margin-top: 0.5em;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+    }
+
+    button {
+      background-color: #b71c1c;
+      color: #fffde7;
+      font-weight: 600;
+      border: none;
+      margin-top: 1em;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #880e4f;
+    }
+
+    video, canvas, img {
+      width: 100%;
+      max-width: 320px;
+      margin-top: 1em;
+      border-radius: 12px;
+      border: 2px solid #b71c1c;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .student-info {
+      margin-top: 1em;
+      padding: 1em;
+      background: #fff9c4;
+      border: 1px solid #fbc02d;
+      border-radius: 12px;
+      text-align: center;
+      font-weight: 600;
+      color: #5d4037;
+    }
+
+    #status {
+      margin-top: 1em;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    #canvasPreview {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -37,47 +124,40 @@
     <audio id="thankYouAudio" src="https://actions.google.com/sounds/v1/ambiences/confirmation_001.ogg"></audio>
   </div>
 
+  <!-- JavaScript (unchanged) -->
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbznORBjmmwhEJDrMt8EH_jlJKsdWZBz-0sv94sB7lPS3JD6qhMuf1WHoTHLlOizQTmN/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwAlR3bVqppOCmWIApLrcD1bw6dWhvRlMMqZspm5UE74jW0wkGdBLpZp_RIIdgDE5fi/exec';
     let students = [];
     let currentStream;
     let useFrontCamera = true;
 
     async function loadSheets() {
-      try {
-        const res = await fetch(scriptUrl);
-        const sheetNames = await res.json();
-        const select = document.getElementById('sheetSelect');
-        select.innerHTML = '<option value="">--Select Sheet--</option>';
-        sheetNames.forEach(name => {
-          const opt = document.createElement('option');
-          opt.value = name;
-          opt.textContent = name;
-          select.appendChild(opt);
-        });
-      } catch (error) {
-        console.error('Error loading sheet names:', error);
-      }
+      const res = await fetch(scriptUrl);
+      const sheetNames = await res.json();
+      const select = document.getElementById('sheetSelect');
+      select.innerHTML = '<option value="">--Select Sheet--</option>';
+      sheetNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
     }
 
     async function loadRolls(sheetName) {
-      try {
-        const form = new FormData();
-        form.append('action', 'getStudents');
-        form.append('sheetName', sheetName);
-        const res = await fetch(scriptUrl, { method: 'POST', body: form });
-        students = await res.json();
-        const rollSelect = document.getElementById('rollSelect');
-        rollSelect.innerHTML = '<option value="">--Select Roll No--</option>';
-        students.forEach(st => {
-          const opt = document.createElement('option');
-          opt.value = st.roll;
-          opt.textContent = st.roll;
-          rollSelect.appendChild(opt);
-        });
-      } catch (error) {
-        console.error('Error loading roll numbers:', error);
-      }
+      const form = new FormData();
+      form.append('action', 'getStudents');
+      form.append('sheetName', sheetName);
+      const res = await fetch(scriptUrl, { method: 'POST', body: form });
+      students = await res.json();
+      const rollSelect = document.getElementById('rollSelect');
+      rollSelect.innerHTML = '<option value="">--Select Roll No--</option>';
+      students.forEach(st => {
+        const opt = document.createElement('option');
+        opt.value = st.roll;
+        opt.textContent = st.roll;
+        rollSelect.appendChild(opt);
+      });
     }
 
     function updateStudentInfo(roll) {
@@ -94,23 +174,19 @@
     }
 
     async function showStudentImage(code) {
-      try {
-        const form = new FormData();
-        form.append('action', 'getImageIdByCode');
-        form.append('code', code);
+      const form = new FormData();
+      form.append('action', 'getImageIdByCode');
+      form.append('code', code);
 
-        const res = await fetch(scriptUrl, { method: 'POST', body: form });
-        const result = await res.json();
+      const res = await fetch(scriptUrl, { method: 'POST', body: form });
+      const result = await res.json();
 
-        const img = document.getElementById('studentImage');
-        if (result.status === 'found') {
-          img.src = `https://drive.google.com/uc?export=view&id=${result.fileId}`;
-          img.style.display = 'block';
-        } else {
-          img.style.display = 'none';
-        }
-      } catch (error) {
-        console.error('Error showing student image:', error);
+      const img = document.getElementById('studentImage');
+      if (result.status === 'found') {
+        img.src = `https://drive.google.com/uc?export=view&id=${result.fileId}`;
+        img.style.display = 'block';
+      } else {
+        img.style.display = 'none';
       }
     }
 
@@ -160,20 +236,15 @@
       form.append('image', base64);
       form.append('mimeType', 'image/jpeg');
 
-      try {
-        const res = await fetch(scriptUrl, { method: 'POST', body: form });
-        const result = await res.json();
+      const res = await fetch(scriptUrl, { method: 'POST', body: form });
+      const result = await res.json();
 
-        if (result.status === 'success') {
-          document.getElementById('status').textContent = '✅ Image uploaded successfully!';
-          document.getElementById('thankYouAudio').play();
-          setTimeout(() => window.close(), 3000);
-        } else {
-          document.getElementById('status').textContent = '❌ Upload failed: ' + result.message;
-        }
-      } catch (error) {
-        console.error('Error uploading image:', error);
-        document.getElementById('status').textContent = '❌ Upload failed: ' + error.message;
+      if (result.status === 'success') {
+        document.getElementById('status').textContent = '✅ Image uploaded successfully!';
+        document.getElementById('thankYouAudio').play();
+        setTimeout(() => window.close(), 3000);
+      } else {
+        document.getElementById('status').textContent = '❌ Upload failed: ' + result.message;
       }
     }
 
@@ -186,12 +257,8 @@
           facingMode: useFrontCamera ? 'user' : 'environment'
         }
       };
-      try {
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        document.getElementById('video').srcObject = currentStream;
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-      }
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      document.getElementById('video').srcObject = currentStream;
     }
 
     function swapCamera() {
