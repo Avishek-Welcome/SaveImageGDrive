@@ -129,23 +129,30 @@
   </div>
 
   <script>
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwbYNSuLugP2Z2aiarU_HBiIdQ-plCBVaQx6zCoUnhRJLFZ2RIfca5YJPrULHbOstB_/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyYaHlJdgyGl-LF2VquleHE8WU6fRMzo6iHooF5cFwWEgGoTUNH0Dc3cRzPOrSllFIE/exec';
     let students = [];
     let currentStream;
     let useFrontCamera = true;
 
-    async function loadSheets() {
-      const res = await fetch(scriptUrl);
-      const sheetNames = await res.json();
-      const select = document.getElementById('sheetSelect');
-      select.innerHTML = '<option value="">--Select Sheet--</option>';
-      sheetNames.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        select.appendChild(opt);
-      });
-    }
+  async function loadSheets() {
+  try {
+    const res = await fetch(scriptUrl);
+    const sheetNames = await res.json();
+    console.log("Sheet Names:", sheetNames);  // Debug
+    const select = document.getElementById('sheetSelect');
+    select.innerHTML = '<option value="">--Select Class & Section--</option>';
+    sheetNames.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+  } catch (error) {
+    console.error("Error loading sheets:", error);
+    document.getElementById('status').textContent = "❌ Could not load Class & Section list.";
+  }
+}
+
 
     async function loadRolls(sheetName) {
       const form = new FormData();
